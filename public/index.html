@@ -17,6 +17,8 @@
       <nav id="appNav" class="app-nav hidden" aria-label="Primary">
         <button id="showDashboardBtn" class="nav-button nav-button-active" type="button">Tracker</button>
         <button id="showTrendsBtn" class="nav-button" type="button">Trends</button>
+        <button id="showJournalBtn" class="nav-button" type="button">Journal</button>
+        <button id="calmModeBtn" class="nav-button" type="button" title="Calm mode">🌙</button>
       </nav>
 
       <section id="authCard" class="card">
@@ -49,13 +51,53 @@
             <label>Optional note
               <input id="quickNote" placeholder="Example: after lunch" maxlength="120" />
             </label>
+            <details id="quickContextDetails">
+              <summary>Add context (optional)</summary>
+              <div class="context-form">
+                <label>Position
+                  <select id="quickPosition">
+                    <option value="">Select...</option>
+                    <option value="sitting">Sitting</option>
+                    <option value="standing">Standing</option>
+                    <option value="lying">Lying down</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+                <label>Activity
+                  <select id="quickActivity">
+                    <option value="">Select...</option>
+                    <option value="resting">Resting</option>
+                    <option value="walking">Walking</option>
+                    <option value="active">Active</option>
+                    <option value="working">Working</option>
+                  </select>
+                </label>
+                <label>Hydration (1-5)
+                  <input id="quickHydration" type="range" min="1" max="5" value="3" />
+                </label>
+                <label>Stress (1-5)
+                  <input id="quickStress" type="range" min="1" max="5" value="3" />
+                </label>
+                <label class="toggle-row">
+                  <input type="checkbox" id="quickAteRecently" />
+                  Ate something recently
+                </label>
+              </div>
+            </details>
             <p id="todayCount" class="metric">Today: 0</p>
+            <p id="patternToday" class="muted"></p>
           </article>
 
           <article class="card">
             <h2>Session Mode</h2>
             <p class="muted">Start a timed count and track progress to your target.</p>
             <div class="inline-row">
+              <label>Preset
+                <select id="sessionPreset">
+                  <option value="10">Count to 10</option>
+                  <option value="custom">Custom...</option>
+                </select>
+              </label>
               <label>Target
                 <input id="sessionTarget" type="number" min="1" value="10" />
               </label>
@@ -67,6 +109,36 @@
             <label>Session note
               <input id="sessionNote" placeholder="Example: active after dinner" maxlength="120" />
             </label>
+            <details id="sessionContextDetails" disabled>
+              <summary>Add context (optional)</summary>
+              <div class="context-form">
+                <label>Activity
+                  <select id="sessionActivity">
+                    <option value="">Select...</option>
+                    <option value="resting">Resting</option>
+                    <option value="walking">Walking</option>
+                    <option value="active">Active</option>
+                  </select>
+                </label>
+                <label>Stress (1-5)
+                  <input id="sessionStress" type="range" min="1" max="5" value="3" />
+                </label>
+              </div>
+            </details>
+          </article>
+        </div>
+
+        <div class="grid-two">
+          <article class="card">
+            <h2>Pattern Insights</h2>
+            <p id="patternComparison" class="metric">Loading patterns...</p>
+            <p id="hourPattern" class="muted"></p>
+          </article>
+
+          <article class="card">
+            <h2>Milestones</h2>
+            <p id="pregnancyWeek" class="metric">Loading...</p>
+            <ul id="milestoneList" class="activity-list"></ul>
           </article>
         </div>
 
@@ -158,6 +230,57 @@
             <div id="trendHighlights" class="stack"></div>
           </article>
         </div>
+      </section>
+
+      <section id="journalPage" class="hidden">
+        <article class="card">
+          <h2>Daily Journal</h2>
+          <p class="muted">Track how you're feeling each day. This helps you see patterns in movement alongside your wellbeing.</p>
+          <div class="inline-row">
+            <label>Date
+              <input type="date" id="journalEntryDate" />
+            </label>
+            <button id="loadJournalEntryBtn">Load</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Today's Entry</h2>
+          <div class="stack">
+            <label>Sleep quality (1-5)
+              <input id="journalSleep" type="range" min="1" max="5" value="3" />
+            </label>
+            <label>Mood
+              <select id="journalMood">
+                <option value="">Select...</option>
+                <option value="great">Great</option>
+                <option value="good">Good</option>
+                <option value="okay">Okay</option>
+                <option value="tired">Tired</option>
+                <option value="anxious">Anxious</option>
+              </select>
+            </label>
+            <label>Energy level (1-5)
+              <input id="journalEnergy" type="range" min="1" max="5" value="3" />
+            </label>
+            <label>Physical notes
+              <textarea id="journalPhysical" placeholder="Swelling, aches, cravings, etc." maxlength="300"></textarea>
+            </label>
+            <label>Any concerns?
+              <textarea id="journalConcerns" placeholder="Anything you want to mention to your provider?" maxlength="300"></textarea>
+            </label>
+            <label>General notes
+              <textarea id="journalNotes" placeholder="Anything else on your mind?" maxlength="300"></textarea>
+            </label>
+            <button id="saveJournalBtn" class="primary-cta">Save Entry</button>
+            <p id="journalMessage" class="muted"></p>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Recent Entries</h2>
+          <ul id="journalList" class="activity-list"></ul>
+        </article>
       </section>
     </main>
 

@@ -125,18 +125,25 @@ label {
 
 input,
 select,
+textarea,
 button {
   font: inherit;
 }
 
 input,
-select {
+select,
+textarea {
   border-radius: 10px;
   border: 1px solid var(--line);
   padding: 10px;
   min-height: 40px;
   color: var(--ink);
   background: #fff;
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
 }
 
 button {
@@ -235,6 +242,85 @@ button.secondary {
   display: block;
   font-size: 1.25rem;
   margin-top: 4px;
+}
+
+details {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 244, 238, 0.5);
+}
+
+details summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+details summary:hover {
+  color: var(--accent-strong);
+}
+
+.context-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.context-form input[type="range"] {
+  min-height: auto;
+  cursor: pointer;
+}
+
+.sync-state {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.sync-state.synced {
+  color: var(--ok);
+}
+
+body.calm-mode {
+  --accent: #b8a39e;
+  --accent-strong: #9a8680;
+}
+
+body.calm-mode .primary-cta {
+  font-size: 1.3rem;
+  min-height: 60px;
+  padding: 16px;
+}
+
+body.calm-mode button {
+  border-radius: 16px;
+}
+
+body.calm-mode input,
+body.calm-mode select,
+body.calm-mode textarea {
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 48px;
+}
+
+body.calm-mode .topbar {
+  padding: 24px;
+}
+
+body.calm-mode .card {
+  padding: 20px;
+  border-radius: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 820px) {

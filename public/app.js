@@ -57,6 +57,40 @@ const el = {
   summaryEnd: document.getElementById('summaryEnd'),
   printSummaryBtn: document.getElementById('printSummaryBtn'),
   eventList: document.getElementById('eventList'),
+
+  quickContextDetails: document.getElementById('quickContextDetails'),
+  quickPosition: document.getElementById('quickPosition'),
+  quickActivity: document.getElementById('quickActivity'),
+  quickHydration: document.getElementById('quickHydration'),
+  quickStress: document.getElementById('quickStress'),
+  quickAteRecently: document.getElementById('quickAteRecently'),
+  patternToday: document.getElementById('patternToday'),
+
+  sessionPreset: document.getElementById('sessionPreset'),
+  sessionActivity: document.getElementById('sessionActivity'),
+  sessionStress: document.getElementById('sessionStress'),
+  sessionContextDetails: document.getElementById('sessionContextDetails'),
+
+  patternComparison: document.getElementById('patternComparison'),
+  hourPattern: document.getElementById('hourPattern'),
+  pregnancyWeek: document.getElementById('pregnancyWeek'),
+  milestoneList: document.getElementById('milestoneList'),
+
+  showJournalBtn: document.getElementById('showJournalBtn'),
+  journalPage: document.getElementById('journalPage'),
+  journalEntryDate: document.getElementById('journalEntryDate'),
+  loadJournalEntryBtn: document.getElementById('loadJournalEntryBtn'),
+  journalSleep: document.getElementById('journalSleep'),
+  journalMood: document.getElementById('journalMood'),
+  journalEnergy: document.getElementById('journalEnergy'),
+  journalPhysical: document.getElementById('journalPhysical'),
+  journalConcerns: document.getElementById('journalConcerns'),
+  journalNotes: document.getElementById('journalNotes'),
+  saveJournalBtn: document.getElementById('saveJournalBtn'),
+  journalMessage: document.getElementById('journalMessage'),
+  journalList: document.getElementById('journalList'),
+
+  calmModeBtn: document.getElementById('calmModeBtn'),
 };
 
 async function api(path, options = {}) {
@@ -107,10 +141,13 @@ function showDashboard(show) {
 function renderPage(pageName) {
   const showDashboardPage = pageName === 'dashboard';
   const showTrendsPage = pageName === 'trends';
+  const showJournalPage = pageName === 'journal';
   el.dashboard.classList.toggle('hidden', !showDashboardPage);
   el.trendsPage.classList.toggle('hidden', !showTrendsPage);
+  el.journalPage.classList.toggle('hidden', !showJournalPage);
   el.showDashboardBtn.classList.toggle('nav-button-active', showDashboardPage);
   el.showTrendsBtn.classList.toggle('nav-button-active', showTrendsPage);
+  el.showJournalBtn.classList.toggle('nav-button-active', showJournalPage);
 }
 
 function switchPage(pageName) {
@@ -315,6 +352,13 @@ async function loadDashboard() {
   updateSessionUi();
   setupReminderLoop();
   await loadTrendExplorer();
+  await loadPatternComparison();
+  await loadMilestones();
+  await loadJournalEntries();
+
+  const todayDate = new Date().toISOString().split('T')[0];
+  el.journalEntryDate.value = todayDate;
+  await loadJournalEntry(todayDate);
 }
 
 async function logMovement(sessionMode = false) {
@@ -329,10 +373,14 @@ async function logMovement(sessionMode = false) {
     payload.sessionId = state.activeSession.id;
   }
 
-  await api('/api/events', {
+  const eventResponse = await api('/api/events', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+
+  if (!sessionMode && (el.quickPosition.value || el.quickActivity.value)) {
+    await saveContextForEvent(eventResponse.id);
+  }
 
   if (sessionMode && state.activeSession) {
     state.activeSession.actual_count += 1;
@@ -340,6 +388,11 @@ async function logMovement(sessionMode = false) {
   }
 
   el.quickNote.value = '';
+  el.quickPosition.value = '';
+  el.quickActivity.value = '';
+  el.quickHydration.value = '3';
+  el.quickStress.value = '3';
+  el.quickAteRecently.checked = false;
   await loadDashboard();
 }
 
@@ -487,9 +540,114 @@ async function openPrintSummary() {
   printWindow.focus();
 }
 
+async function loadPatternComparison() {
+  const todayData = await api('/api/patterns/today-vs-average');
+  el.patternComparison.textContent = `Today: ${todayData.todayCount} | Average: ${todayData.sevenDayAverage}`;
+  el.patternComparison.style.color = todayData.trend === 'above' ? 'var(--ok)' : todayData.trend === 'below' ? '#a53220' : 'inherit';
+
+  const hourData = await api('/api/patterns/hour-vs-normal');
+  el.hourPattern.textContent = `This hour: ${hourData.thisHourCount} | Normal for this time: ${hourData.normalHourCount}`;
+}
+
+async function loadMilestones() {
+  const data = await api('/api/milestones');
+  el.pregnancyWeek.textContent = data.current_week ? `Week ${data.current_week}` : 'Set due date';
+  
+  el.milestoneList.innerHTML = '';
+  if (!data.milestones.length) {
+    el.milestoneList.innerHTML = '<li>No upcoming milestones</li>';
+    return;
+  }
+
+  data.milestones.forEach((m) => {
+    const li = document.createElement('li');
+    li.textContent = `Week ${m.week}: ${m.text}`;
+    el.milestoneList.appendChild(li);
+  });
+}
+
+async function saveContextForEvent(eventId) {
+  const context = {
+    position: el.quickPosition.value || null,
+    activity: el.quickActivity.value || null,
+    hydrationLevel: Number(el.quickHydration.value || 3),
+    stressLevel: Number(el.quickStress.value || 3),
+    ateRecently: el.quickAteRecently.checked || false,
+  };
+
+  await api(`/api/events/${eventId}/context`, {
+    method: 'POST',
+    body: JSON.stringify(context),
+  });
+}
+
+async function loadJournalEntries() {
+  const entries = await api('/api/journal');
+  el.journalList.innerHTML = '';
+  
+  if (!entries.length) {
+    el.journalList.innerHTML = '<li>No journal entries yet.</li>';
+    return;
+  }
+
+  entries.forEach((entry) => {
+    const li = document.createElement('li');
+    const mood = entry.mood ? ` (${entry.mood})` : '';
+    li.textContent = `${entry.entry_date}${mood}: ${entry.notes || 'No notes'}`;
+    el.journalList.appendChild(li);
+  });
+}
+
+async function loadJournalEntry(date) {
+  const entries = await api(`/api/journal?start=${encodeURIComponent(date)}&end=${encodeURIComponent(date + 'T23:59:59Z')}`);
+  const entry = entries[0] || {};
+
+  el.journalSleep.value = entry.sleep_quality || 3;
+  el.journalMood.value = entry.mood || '';
+  el.journalEnergy.value = entry.energy_level || 3;
+  el.journalPhysical.value = entry.physical_notes || '';
+  el.journalConcerns.value = entry.concerns || '';
+  el.journalNotes.value = entry.notes || '';
+}
+
+async function saveJournalEntry() {
+  const date = el.journalEntryDate.value || new Date().toISOString().split('T')[0];
+  const payload = {
+    entryDate: date,
+    sleepQuality: Number(el.journalSleep.value),
+    mood: el.journalMood.value || null,
+    energyLevel: Number(el.journalEnergy.value),
+    physicalNotes: el.journalPhysical.value.trim() || null,
+    concerns: el.journalConcerns.value.trim() || null,
+    notes: el.journalNotes.value.trim() || null,
+  };
+
+  await api('/api/journal', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+  el.journalMessage.textContent = 'Entry saved!';
+  setTimeout(() => { el.journalMessage.textContent = ''; }, 3000);
+  await loadJournalEntries();
+}
+
+function toggleCalmMode() {
+  const isCalm = document.body.classList.toggle('calm-mode');
+  localStorage.setItem('calmMode', isCalm ? '1' : '0');
+}
+
+function initializeCalmMode() {
+  if (localStorage.getItem('calmMode') === '1') {
+    document.body.classList.add('calm-mode');
+  }
+}
+
 el.authForm.addEventListener('submit', handleAuthSubmit);
 el.showDashboardBtn.addEventListener('click', () => switchPage('dashboard'));
 el.showTrendsBtn.addEventListener('click', () => switchPage('trends'));
+el.showJournalBtn.addEventListener('click', () => switchPage('journal'));
+el.calmModeBtn.addEventListener('click', toggleCalmMode);
 el.quickTapBtn.addEventListener('click', () => logMovement(false));
 el.startSessionBtn.addEventListener('click', startSession);
 el.sessionTapBtn.addEventListener('click', () => logMovement(true));
@@ -498,7 +656,10 @@ el.saveReminderBtn.addEventListener('click', saveProfile);
 el.saveProfileBtn.addEventListener('click', saveProfile);
 el.applyTrendFilterBtn.addEventListener('click', loadTrendExplorer);
 el.printSummaryBtn.addEventListener('click', openPrintSummary);
+el.loadJournalEntryBtn.addEventListener('click', () => loadJournalEntry(el.journalEntryDate.value || new Date().toISOString().split('T')[0]));
+el.saveJournalBtn.addEventListener('click', saveJournalEntry);
 
+initializeCalmMode();
 initializeAuthView().catch((err) => {
   el.authError.textContent = err.message;
 });

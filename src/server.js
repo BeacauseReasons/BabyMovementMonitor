@@ -355,6 +355,242 @@ app.get('/api/summary/print', requireAuth, async (req, res) => {
   });
 });
 
+app.post('/api/events/:id/context', requireAuth, async (req, res) => {
+  const eventId = Number(req.params.id);
+  const { position, activity, hydrationLevel, stressLevel, ateRecently, notes } = req.body;
+
+  const event = await db.query('SELECT user_id FROM movement_events WHERE id = $1', [eventId]);
+  if (!event.rows.length || event.rows[0].user_id !== req.user.id) {
+    return res.status(404).json({ error: 'Event not found' });
+  }
+
+  const result = await db.query(
+    `INSERT INTO movement_context (movement_event_id, position, activity, hydration_level, stress_level, ate_recently, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (movement_event_id) DO UPDATE SET
+       position = $2, activity = $3, hydration_level = $4, stress_level = $5, ate_recently = $6, notes = $7
+     RETURNING *`,
+    [eventId, position || null, activity || null, hydrationLevel || null, stressLevel || null, ateRecently || null, notes || null]
+  );
+
+  return res.json(result.rows[0]);
+});
+
+app.get('/api/events/:id/context', requireAuth, async (req, res) => {
+  const eventId = Number(req.params.id);
+
+  const event = await db.query('SELECT user_id FROM movement_events WHERE id = $1', [eventId]);
+  if (!event.rows.length || event.rows[0].user_id !== req.user.id) {
+    return res.status(404).json({ error: 'Event not found' });
+  }
+
+  const result = await db.query('SELECT * FROM movement_context WHERE movement_event_id = $1', [eventId]);
+  return res.json(result.rows[0] || null);
+});
+
+app.get('/api/journal', requireAuth, async (req, res) => {
+  const { start, end } = req.query;
+
+  const result = await db.query(
+    `SELECT * FROM journal_entries
+     WHERE user_id = $1
+       AND ($2::date IS NULL OR entry_date >= $2)
+       AND ($3::date IS NULL OR entry_date <= $3)
+     ORDER BY entry_date DESC`,
+    [req.user.id, start || null, end || null]
+  );
+
+  return res.json(result.rows);
+});
+
+app.post('/api/journal', requireAuth, async (req, res) => {
+  const { entryDate, sleepQuality, mood, energyLevel, physicalNotes, concerns, notes } = req.body;
+
+  if (!entryDate) {
+    return res.status(400).json({ error: 'Entry date is required' });
+  }
+
+  const result = await db.query(
+    `INSERT INTO journal_entries (user_id, entry_date, sleep_quality, mood, energy_level, physical_notes, concerns, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (user_id, entry_date) DO UPDATE SET
+       sleep_quality = $3, mood = $4, energy_level = $5, physical_notes = $6, concerns = $7, notes = $8, updated_at = NOW()
+     RETURNING *`,
+    [req.user.id, entryDate, sleepQuality || null, mood || null, energyLevel || null, physicalNotes || null, concerns || null, notes || null]
+  );
+
+  return res.json(result.rows[0]);
+});
+
+app.get('/api/reminder-presets', requireAuth, async (req, res) => {
+  const result = await db.query(
+    `SELECT * FROM reminder_presets WHERE user_id = $1 AND is_active = TRUE ORDER BY name ASC`,
+    [req.user.id]
+  );
+
+  return res.json(result.rows);
+});
+
+app.post('/api/reminder-presets', requireAuth, async (req, res) => {
+  const { name, targetCount, presetType } = req.body;
+
+  if (!name || !targetCount) {
+    return res.status(400).json({ error: 'Name and target count are required' });
+  }
+
+  const result = await db.query(
+    `INSERT INTO reminder_presets (user_id, name, target_count, preset_type)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [req.user.id, name, targetCount, presetType || 'custom']
+  );
+
+  return res.json(result.rows[0]);
+});
+
+app.get('/api/patterns/today-vs-average', requireAuth, async (req, res) => {
+  const profileResult = await db.query(
+    'SELECT timezone FROM profiles WHERE user_id = $1',
+    [req.user.id]
+  );
+  const timezone = profileResult.rows[0]?.timezone || 'UTC';
+
+  const today = await db.query(
+    `SELECT COUNT(*)::int AS today_count
+     FROM movement_events
+     WHERE user_id = $1
+       AND date_trunc('day', occurred_at AT TIME ZONE $2) = date_trunc('day', NOW() AT TIME ZONE $2)`,
+    [req.user.id, timezone]
+  );
+
+  const lastWeek = await db.query(
+    `SELECT COUNT(*)::int AS count,
+            date_trunc('day', occurred_at AT TIME ZONE $2)::date AS day
+     FROM movement_events
+     WHERE user_id = $1
+       AND occurred_at >= NOW() - '7 days'::interval
+     GROUP BY 2
+     ORDER BY 2 ASC`,
+    [req.user.id, timezone]
+  );
+
+  const avgPerDay = lastWeek.rows.length > 0
+    ? Math.round(lastWeek.rows.reduce((sum, row) => sum + row.count, 0) / lastWeek.rows.length)
+    : 0;
+
+  return res.json({
+    todayCount: today.rows[0]?.today_count || 0,
+    sevenDayAverage: avgPerDay,
+    trend: today.rows[0]?.today_count > avgPerDay ? 'above' : today.rows[0]?.today_count < avgPerDay ? 'below' : 'normal',
+  });
+});
+
+app.get('/api/patterns/hour-vs-normal', requireAuth, async (req, res) => {
+  const profileResult = await db.query(
+    'SELECT timezone FROM profiles WHERE user_id = $1',
+    [req.user.id]
+  );
+  const timezone = profileResult.rows[0]?.timezone || 'UTC';
+  const currentHour = new Date().getHours();
+
+  const thisHour = await db.query(
+    `SELECT COUNT(*)::int AS count
+     FROM movement_events
+     WHERE user_id = $1
+       AND date_trunc('day', occurred_at AT TIME ZONE $2) = date_trunc('day', NOW() AT TIME ZONE $2)
+       AND EXTRACT(HOUR FROM occurred_at AT TIME ZONE $2)::int = $3`,
+    [req.user.id, timezone, currentHour]
+  );
+
+  const normalHour = await db.query(
+    `SELECT COUNT(*)::int AS avg_count
+     FROM (
+       SELECT EXTRACT(HOUR FROM occurred_at AT TIME ZONE $2)::int AS hour,
+              COUNT(*)::int / (SELECT COUNT(DISTINCT date_trunc('day', occurred_at AT TIME ZONE $2)) FROM movement_events WHERE user_id = $1) AS daily_avg
+       FROM movement_events
+       WHERE user_id = $1 AND occurred_at >= NOW() - '30 days'::interval
+       GROUP BY 1
+     ) AS hourly
+     WHERE hour = $3`,
+    [req.user.id, timezone, currentHour]
+  );
+
+  return res.json({
+    currentHour: currentHour,
+    thisHourCount: thisHour.rows[0]?.count || 0,
+    normalHourCount: normalHour.rows[0]?.avg_count || 0,
+    status: thisHour.rows[0]?.count > (normalHour.rows[0]?.avg_count || 0) ? 'above_normal' : 'normal',
+  });
+});
+
+app.get('/api/milestones', requireAuth, async (req, res) => {
+  const profileResult = await db.query(
+    'SELECT due_date FROM profiles WHERE user_id = $1',
+    [req.user.id]
+  );
+
+  const dueDate = profileResult.rows[0]?.due_date;
+  if (!dueDate) {
+    return res.json({
+      current_week: null,
+      weeks_remaining: null,
+      milestones: [],
+    });
+  }
+
+  const today = new Date();
+  const due = new Date(dueDate);
+  const weeksSinceLMP = Math.floor((today - new Date(due.getFullYear(), due.getMonth(), due.getDate() - 280)) / (7 * 24 * 60 * 60 * 1000));
+  const weeksRemaining = Math.max(0, 40 - weeksSinceLMP);
+
+  const milestones = [
+    { week: 16, text: 'Second trimester begins' },
+    { week: 20, text: 'Anatomy scan typically done' },
+    { week: 28, text: 'Third trimester begins' },
+    { week: 32, text: 'Baby drops (engagement)' },
+    { week: 37, text: 'Full term pregnancy' },
+    { week: 40, text: 'Due date' },
+  ];
+
+  const relevantMilestones = milestones.filter(m => m.week >= Math.max(1, weeksSinceLMP - 2));
+
+  return res.json({
+    current_week: Math.max(1, weeksSinceLMP),
+    weeks_remaining: weeksRemaining,
+    milestones: relevantMilestones,
+  });
+});
+
+app.get('/api/partner-access', requireAuth, async (req, res) => {
+  const result = await db.query(
+    `SELECT id, partner_email, access_level, accepted, created_at
+     FROM partner_access
+     WHERE primary_user_id = $1
+     ORDER BY created_at DESC`,
+    [req.user.id]
+  );
+
+  return res.json(result.rows);
+});
+
+app.post('/api/partner-access/invite', requireAuth, async (req, res) => {
+  const { partnerEmail } = req.body;
+
+  if (!partnerEmail) {
+    return res.status(400).json({ error: 'Partner email is required' });
+  }
+
+  const result = await db.query(
+    `INSERT INTO partner_access (primary_user_id, partner_email, access_level)
+     VALUES ($1, $2, 'view')
+     ON CONFLICT DO NOTHING
+     RETURNING *`,
+    [req.user.id, partnerEmail.toLowerCase()]
+  );
+
+  return res.status(201).json(result.rows[0] || { message: 'Invite already sent' });
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });

@@ -5,13 +5,19 @@ Little Kicks Tracker is a wellness-focused baby movement tracker built as a webs
 ## What it does
 
 - Creates a single shared household account for both parents to use across devices.
-- Supports quick movement logging for casual all-day tracking.
-- Supports timed kick-count sessions with progress toward a target.
-- Stores notes on quick logs and sessions.
-- Shows recent activity and daily totals.
-- Includes a dedicated Trends page with filters by day, hour of day, week, and day of week.
-- Supports browser-based reminders.
-- Generates a print-friendly summary for appointments or personal review.
+- **Quick movement logging** for casual all-day tracking with optional context (position, activity, hydration, stress).
+- **Timed kick-count sessions** with progress toward a customizable target.
+- **Context logging** for each movement to track position, activity level, hydration, and stress.
+- **Daily journal** for wellness tracking (mood, energy, sleep, physical notes, concerns).
+- **Pattern insights** showing movement today vs 7-day average and this hour vs normal hour.
+- **Pregnancy milestones** with week counter and upcoming milestone timeline.
+- **Dedicated Trends page** with filters by day, hour of day, week, and day of week.
+- **Calm mode** for low-stimulation, larger UI suitable for nighttime use.
+- **Kick-count presets** to quickly select common counting targets.
+- **Smart reminders** with browser notifications.
+- **Partner access** system for inviting another household member to view or collaborate.
+- **Print-friendly summary** for appointments or personal review.
+- **Offline-first** architecture with local data persistence.
 
 ## Product scope
 
@@ -45,29 +51,64 @@ If there is any concern about movement changes, contact your healthcare provider
 
 ## Features in this build
 
-### Tracking
+### Movement Tracking
 
-- Quick tap movement logging
-- Timed session tracking
-- Session progress display
-- Notes on entries and sessions
+- Quick tap movement logging with optional notes
+- Timed session tracking with progress toward target
+- Session progress display (actual / target count)
+- Customizable kick-count presets (e.g., "Count to 10")
+- Context logging for each movement:
+  - Position (sitting, standing, lying down)
+  - Activity (resting, walking, active)
+  - Hydration level (1-5 scale)
+  - Stress level (1-5 scale)
+  - Ate recently (yes/no)
 
-### Trends
+### Insights & Patterns
 
-- Weekly snapshot on the main tracker screen
-- Dedicated Trends page
-- Grouping filters for:
-  - day
-  - hour of day
-  - week
-  - day of week
-- Summary highlight cards for totals, busiest period, and averages
+- Today vs 7-day average comparison
+- Current hour vs historical normal hour comparison
+- Weekly snapshot on main dashboard
+- Dedicated Trends page with advanced filtering:
+  - Grouping by day, hour of day, week, or day of week
+  - Adjustable time windows (1-365 days)
+  - Summary highlights (total, busiest period, averages)
 
-### Household use
+### Wellness & Journal
+
+- Daily journal entries with:
+  - Sleep quality (1-5)
+  - Mood tracking (great, good, okay, tired, anxious)
+  - Energy level (1-5)
+  - Physical notes (swelling, aches, cravings)
+  - Concerns to discuss with provider
+  - General notes
+- Journal history view
+
+### Pregnancy Timeline
+
+- Automatic pregnancy week calculation from due date
+- Countdown to due date
+- Relevant pregnancy milestones (e.g., "Second trimester begins", "Full term pregnancy")
+
+### Reminders & Notifications
+
+- Daily browser notifications
+- Customizable reminder time
+- Preset targets for quick-start sessions
+
+### Household & Partner Access
 
 - Shared login across devices
-- Browser notifications for reminders
-- Print summary for selected date range
+- Partner invitation system (infrastructure ready)
+- Shared movement history
+
+### User Experience
+
+- Calm mode for low-stimulation UI (larger buttons, reduced motion)
+- Print-friendly summary for appointments (date range selection)
+- Offline-first data persistence
+- Responsive design for phone and desktop
 
 ## Running the app with Docker
 
@@ -117,46 +158,87 @@ Available variables:
 
 The database is initialized from [sql/init.sql](sql/init.sql) and includes:
 
-- `users`
-- `profiles`
-- `sessions`
-- `movement_events`
+**Core tables:**
+- `users`: household account and authentication
+- `profiles`: due date, targets, timezone, preferences
+- `sessions`: timed kick-count sessions
+- `movement_events`: individual movement taps
+
+**New feature tables:**
+- `movement_context`: position, activity, hydration, stress logged with each movement
+- `journal_entries`: daily wellness tracking (mood, energy, sleep, notes, concerns)
+- `reminder_presets`: customizable kick-count targets
+- `partner_access`: partner invitations and access management
+- `milestone_preferences`: pregnancy milestone display settings
 
 Data is persisted through the Docker volume declared in [docker-compose.yml](docker-compose.yml).
 
 ## Current API surface
 
-Main endpoints included in this build:
-
+### Authentication
 - `GET /api/health`
 - `GET /api/auth/status`
 - `POST /api/auth/setup`
 - `POST /api/auth/login`
+
+### Profile
 - `GET /api/profile`
 - `PUT /api/profile`
+
+### Movement Events
 - `POST /api/events`
 - `GET /api/events`
+- `POST /api/events/:id/context`
+- `GET /api/events/:id/context`
+
+### Sessions
 - `POST /api/sessions/start`
 - `POST /api/sessions/:id/end`
 - `GET /api/sessions`
-- `GET /api/trends`
+
+### Trends & Analytics
+- `GET /api/trends` (with `groupBy` and `windowSize` query params)
 - `GET /api/trends/weekly`
+- `GET /api/patterns/today-vs-average`
+- `GET /api/patterns/hour-vs-normal`
+
+### Journal
+- `GET /api/journal` (with optional `start` and `end` date filters)
+- `POST /api/journal`
+
+### Milestones
+- `GET /api/milestones`
+
+### Reminders & Presets
+- `GET /api/reminder-presets`
+- `POST /api/reminder-presets`
+
+### Partner Access
+- `GET /api/partner-access`
+- `POST /api/partner-access/invite`
+
+### Reporting
 - `GET /api/summary/print`
 
 ## Known limitations
 
 - Browser reminders are local to the browser and device where they are enabled.
-- There is currently one shared household account model, not separate partner accounts.
+- Partner access UI is in place for invitations but full partner collaboration features (live sharing, partner permissions) are infrastructure-ready and can be expanded.
 - Docker startup will fail if Docker Desktop is installed but not running.
-- There is no CSV export yet.
+- CSV export is not yet implemented.
+- Journal and context logging do not affect reminders or alerts (this is intentional to avoid medical claims).
 
 ## Suggested next improvements
 
 - CSV export for appointment sharing and backup
-- Automated tests for the API and frontend flows
-- Better trend comparisons between time windows
-- More polished print summary formatting
-- Optional stronger auth protections such as rate limiting
+- Automated unit and integration tests for API and frontend flows
+- Partner accept/decline flow and permission management
+- Push notifications in addition to browser notifications
+- Mobile app (native iOS/Android) built from the same API
+- More polished print summary with charts and graphs
+- Rate limiting and optional stronger auth protections (2FA, lockout after failed attempts)
+- Export data to PDF with professional formatting for sharing with providers
+- Integration with health platforms (Apple Health, Google Fit) for resting heart rate context
 
 ## Safety note
 
