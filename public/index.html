@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Little Kicks Tracker</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <h1>Little Kicks Tracker</h1>
+        <p>Wellness tracking only. Not medical advice. Contact your care team if you are concerned.</p>
+      </header>
+
+      <nav id="appNav" class="app-nav hidden" aria-label="Primary">
+        <button id="showDashboardBtn" class="nav-button nav-button-active" type="button">Tracker</button>
+        <button id="showTrendsBtn" class="nav-button" type="button">Trends</button>
+      </nav>
+
+      <section id="authCard" class="card">
+        <h2 id="authTitle">Welcome</h2>
+        <p id="authSubtitle">Sign in to your shared household tracker.</p>
+        <form id="authForm" class="stack">
+          <label>Email
+            <input type="email" id="email" required />
+          </label>
+          <label>Password
+            <input type="password" id="password" required minlength="6" />
+          </label>
+          <label id="dueDateWrap" class="hidden">Due date
+            <input type="date" id="dueDate" />
+          </label>
+          <label id="dailyTargetWrap" class="hidden">Daily target
+            <input type="number" id="dailyTarget" min="1" value="10" />
+          </label>
+          <button type="submit" id="authSubmit">Continue</button>
+        </form>
+        <p id="authError" class="error"></p>
+      </section>
+
+      <section id="dashboard" class="hidden">
+        <div class="grid-two">
+          <article class="card">
+            <h2>Quick Log</h2>
+            <p class="muted">Tap whenever movement happens.</p>
+            <button id="quickTapBtn" class="primary-cta">+ Log Movement</button>
+            <label>Optional note
+              <input id="quickNote" placeholder="Example: after lunch" maxlength="120" />
+            </label>
+            <p id="todayCount" class="metric">Today: 0</p>
+          </article>
+
+          <article class="card">
+            <h2>Session Mode</h2>
+            <p class="muted">Start a timed count and track progress to your target.</p>
+            <div class="inline-row">
+              <label>Target
+                <input id="sessionTarget" type="number" min="1" value="10" />
+              </label>
+              <button id="startSessionBtn">Start Session</button>
+              <button id="endSessionBtn" class="secondary" disabled>End Session</button>
+            </div>
+            <button id="sessionTapBtn" class="primary-cta" disabled>+ Session Movement</button>
+            <p id="sessionProgress" class="metric">No active session</p>
+            <label>Session note
+              <input id="sessionNote" placeholder="Example: active after dinner" maxlength="120" />
+            </label>
+          </article>
+        </div>
+
+        <div class="grid-two">
+          <article class="card">
+            <h2>Reminders</h2>
+            <div class="inline-row">
+              <label class="toggle-row">
+                <input type="checkbox" id="reminderEnabled" />
+                Enable daily reminder
+              </label>
+              <input type="time" id="reminderTime" value="20:00" />
+              <button id="saveReminderBtn">Save</button>
+            </div>
+            <p class="muted">Browser notifications are local to each device and browser.</p>
+          </article>
+
+          <article class="card">
+            <h2>Profile</h2>
+            <div class="inline-row">
+              <label>Due date
+                <input type="date" id="profileDueDate" />
+              </label>
+              <label>Daily target
+                <input type="number" id="profileDailyTarget" min="1" />
+              </label>
+              <button id="saveProfileBtn">Update</button>
+            </div>
+            <p id="profileMessage" class="muted"></p>
+          </article>
+        </div>
+
+        <div class="grid-two">
+          <article class="card">
+            <h2>Weekly Trends</h2>
+            <p class="muted">Quick snapshot. Open the Trends page for deeper filtering.</p>
+            <div id="trendBars" class="trend-bars"></div>
+          </article>
+
+          <article class="card">
+            <h2>Print Summary</h2>
+            <div class="inline-row">
+              <label>From
+                <input type="date" id="summaryStart" />
+              </label>
+              <label>To
+                <input type="date" id="summaryEnd" />
+              </label>
+              <button id="printSummaryBtn">Open Print View</button>
+            </div>
+          </article>
+        </div>
+
+        <article class="card">
+          <h2>Recent Activity</h2>
+          <ul id="eventList" class="activity-list"></ul>
+        </article>
+      </section>
+
+      <section id="trendsPage" class="hidden">
+        <article class="card">
+          <h2>Trend Explorer</h2>
+          <p class="muted">See movement patterns by day, hour of day, week, or day of week.</p>
+          <div class="inline-row trend-control-row">
+            <label>View by
+              <select id="trendGroupBy">
+                <option value="day">Day</option>
+                <option value="hour">Hour of day</option>
+                <option value="week" selected>Week</option>
+                <option value="weekday">Day of week</option>
+              </select>
+            </label>
+            <label>Window size
+              <input id="trendWindowSize" type="number" min="1" max="365" value="8" />
+            </label>
+            <button id="applyTrendFilterBtn" type="button">Apply Filters</button>
+          </div>
+          <p id="trendHint" class="muted"></p>
+        </article>
+
+        <div class="grid-two">
+          <article class="card">
+            <h2>Trend Chart</h2>
+            <div id="trendPageBars" class="trend-bars"></div>
+          </article>
+
+          <article class="card">
+            <h2>Highlights</h2>
+            <div id="trendHighlights" class="stack"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
